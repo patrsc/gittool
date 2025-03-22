@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Git</title>
+    <style>
+        html, body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+        }
+        tr:hover {
+            background-color: #f9f9f9;
+        }
+        .git-branch {
+            color: #2196F3;
+        }
+        .git-branch-detached {
+            color: #f44336;
+        }
+        .git-commit {
+            color: #aaa;
+        }
+        .git-dirty {
+            color: #f44336;
+        }
+        .git-clean {
+            color: #4CAF50;
+        }
+        .git-tracking {
+            color: #666;
+            font-size: 0.9em;
+        }
+        .git-tracking-ahead {
+            color: #f44336;
+            font-weight: bold;
+        }
+        .git-tracking-behind {
+            color: #f44336;
+            font-weight: bold;
+        }
+        .git-tracking-zero {
+            color: #aaa;
+        }
+        .git-tracking-none {
+            color: #f44336;
+        }
+        .git-stash {
+            color: #f44336;
+        }
+        .unsynced-branches {
+            color: #f44336;
+        }
+        .loading {
+            color: #aaa;
+            font-style: italic;
+        }
+        .git-button {
+            display: inline-block;
+            padding: 2px 8px;
+            margin-left: 8px;
+            border: none;
+            border-radius: 4px;
+            background-color: #2196F3;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background-color 0.2s;
+        }
+        .git-button:hover {
+            background-color: #1976D2;
+        }
+        .git-button:disabled {
+            background-color: #aaa;
+            cursor: not-allowed;
+        }
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #aaa;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            vertical-align: middle;
+            margin-right: 4px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+    <script>
+        // Send keepalive requests
+        setInterval(async () => {
+            await fetch('/keepalive');
+        }, 1000);
+
+        async function getDirInfo(dirname) {
+            try {
+                const response = await fetch(`/get/${encodeURIComponent(dirname)}`);
+                const info = await response.json();
+                return info;
+            } catch (error) {
+                console.error(`Error fetching info for ${dirname}:`, error);
+                return null;
+            }
+        }
+
+        function createBranchInfo(gitInfo) {
+            if (!gitInfo) return '';
+            
+            const elements = [];
+            
+            // Branch information
+            if (gitInfo.branch) {
+                const branchSpan = document.createElement('span');
+                const isDetached = gitInfo.branch === 'HEAD';
+                branchSpan.className = isDetached ? 'git-branch-detached' : 'git-branch';
+                branchSpan.textContent = gitInfo.branch;
+                elements.push(branchSpan);
+            }
+            
+            // Commit information
+            if (gitInfo.commit) {
+                const commitSpan = document.createElement('span');
+                commitSpan.className = 'git-commit';
+                commitSpan.textContent = ` (${gitInfo.commit})`;
+                elements.push(commitSpan);
+            }
+            
+            return elements;
+        }
+
+        function createTrackingInfo(gitInfo, folder) {
+            if (!gitInfo) return '';
+            
+            const trackingSpan = document.createElement('span');
+            trackingSpan.className = 'git-tracking';
+            
+            if (gitInfo.tracking) {
+                const parts = [];
+                
+                // Always show both arrows
+                const aheadClass = gitInfo.tracking.ahead > 0 ? 'git-tracking-ahead' : 'git-tracking-zero';
+                const behindClass = gitInfo.tracking.behind > 0 ? 'git-tracking-behind' : 'git-tracking-zero';
+                
+                parts.push(`<span class="${aheadClass}">↑${gitInfo.tracking.ahead}</span>`);
+                parts.push(`<span class="${behindClass}">↓${gitInfo.tracking.behind}</span>`);
+                
+                trackingSpan.innerHTML = parts.join(' ');
+
+                // Add push/pull buttons if working directory is clean
+                if (gitInfo.is_clean) {
+                    if (gitInfo.tracking.ahead > 0) {
+                        const button = document.createElement('button');
+                        button.className = 'git-button';
+                        button.textContent = 'Push';
+                        button.onclick = () => syncRepo(folder, 'push', button);
+                        trackingSpan.appendChild(button);
+                    }
+                    if (gitInfo.tracking.behind > 0) {
+                        const button = document.createElement('button');
+                        button.className = 'git-button';
+                        button.textContent = 'Pull';
+                        button.onclick = () => syncRepo(folder, 'pull', button);
+                        trackingSpan.appendChild(button);
+                    }
+                }
+            } else if (!gitInfo.is_detached) {
+                trackingSpan.className = 'git-tracking-none';
+                trackingSpan.textContent = 'no tracking';
+            } else {
+                trackingSpan.textContent = '-';
+            }
+            
+            return trackingSpan;
+        }
+
+        function createStateInfo(gitInfo) {
+            if (!gitInfo) return '';
+            
+            const stateSpan = document.createElement('span');
+            stateSpan.className = gitInfo.is_clean ? 'git-clean' : 'git-dirty';
+            stateSpan.textContent = gitInfo.is_clean ? '✓ clean' : '● dirty';
+            return stateSpan;
+        }
+
+        function createStashInfo(gitInfo) {
+            if (!gitInfo) return '';
+            
+            const stashSpan = document.createElement('span');
+            if (gitInfo.stash_count > 0) {
+                stashSpan.className = 'git-stash';
+                stashSpan.textContent = `● ${gitInfo.stash_count}`;
+            } else {
+                stashSpan.textContent = '-';
+            }
+            return stashSpan;
+        }
+
+        function createUnsyncedBranchesInfo(gitInfo) {
+            if (!gitInfo) return '';
+            
+            const unsyncedSpan = document.createElement('span');
+            if (gitInfo.unsynced_branches > 0) {
+                unsyncedSpan.className = 'unsynced-branches';
+                unsyncedSpan.textContent = `● ${gitInfo.unsynced_branches}`;
+            } else {
+                unsyncedSpan.textContent = '-';
+            }
+            return unsyncedSpan;
+        }
+
+        function createOverallStateInfo(gitInfo) {
+            const stateSpan = document.createElement('span');
+            const isClean = gitInfo && gitInfo.is_clean && 
+                           gitInfo.branch !== 'HEAD' && 
+                           gitInfo.tracking && 
+                           gitInfo.tracking.ahead === 0 && 
+                           gitInfo.tracking.behind === 0 && 
+                           gitInfo.stash_count === 0 && 
+                           gitInfo.unsynced_branches === 0;
+            
+            stateSpan.className = isClean ? 'git-clean' : 'git-dirty';
+            stateSpan.textContent = isClean ? '✓' : '●';
+            return stateSpan;
+        }
+
+        async function updateFolderInfo(folder, row) {
+            const cells = row.getElementsByTagName('td');
+            cells[0].textContent = folder;
+            cells[1].innerHTML = '<span class="spinner"></span>';
+            cells[2].innerHTML = '<span class="spinner"></span>';
+            cells[3].innerHTML = '<span class="spinner"></span>';
+            cells[4].innerHTML = '<span class="spinner"></span>';
+            cells[5].innerHTML = '<span class="spinner"></span>';
+            cells[6].innerHTML = '<span class="spinner"></span>';
+
+            const info = await getDirInfo(folder);
+            if (info && info.git) {
+                // Update overall state
+                cells[1].innerHTML = '';
+                cells[1].appendChild(createOverallStateInfo(info.git));
+
+                // Update branch/rev info
+                cells[2].innerHTML = '';
+                const branchElements = createBranchInfo(info.git);
+                branchElements.forEach(element => cells[2].appendChild(element));
+
+                // Update tracking info
+                cells[3].innerHTML = '';
+                cells[3].appendChild(createTrackingInfo(info.git, folder));
+
+                // Update state info
+                cells[4].innerHTML = '';
+                cells[4].appendChild(createStateInfo(info.git));
+
+                // Update stash info
+                cells[5].innerHTML = '';
+                cells[5].appendChild(createStashInfo(info.git));
+
+                // Update unsynced branches info
+                cells[6].innerHTML = '';
+                cells[6].appendChild(createUnsyncedBranchesInfo(info.git));
+            } else {
+                // Update overall state (will be dirty for non-git repos)
+                cells[1].innerHTML = '';
+                cells[1].appendChild(createOverallStateInfo(null));
+                cells[2].textContent = 'not a git repo';
+                cells[3].textContent = '-';
+                cells[4].textContent = '-';
+                cells[5].textContent = '-';
+                cells[6].textContent = '-';
+            }
+        }
+
+        async function fetchFolders() {
+            try {
+                let response = await fetch('/list');
+                let folders = await response.json();
+                
+                const tableBody = document.getElementById('folder-list');
+                tableBody.innerHTML = ''; // Clear any previous content
+
+                if (folders.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="5">No folders found.</td></tr>';
+                } else {
+                    // Create table rows for all folders first
+                    folders.forEach(folder => {
+                        let row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${folder}</td>
+                            <td><span class="spinner"></span></td>
+                            <td><span class="spinner"></span></td>
+                            <td><span class="spinner"></span></td>
+                            <td><span class="spinner"></span></td>
+                            <td><span class="spinner"></span></td>
+                            <td><span class="spinner"></span></td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+
+                    // Load all folder info in parallel
+                    const updatePromises = folders.map((folder, index) => 
+                        updateFolderInfo(folder, tableBody.children[index])
+                    );
+                    await Promise.all(updatePromises);
+                }
+            } catch (error) {
+                console.error("Error fetching folder list:", error);
+            }
+        }
+
+        async function syncRepo(folder, operation, button) {
+            try {
+                // Disable the button
+                button.disabled = true;
+                const response = await fetch(`/${operation}/${encodeURIComponent(folder)}`, {
+                    method: 'POST'
+                });
+                if (!response.ok) {
+                    throw new Error(`${operation} failed on ${folder}`);
+                }
+                // Set button text to "Done" and make it green
+                button.textContent = "Done";
+                button.style.backgroundColor = "#4CAF50";
+            } catch (error) {
+                console.error(`Error:`, error);
+                // Set button text to "Fail" and make it red
+                button.textContent = "Fail";
+                button.style.backgroundColor = "#f44336";
+            }
+        }
+
+        // Fetch folders when the page has loaded
+        document.addEventListener("DOMContentLoaded", fetchFolders);
+    </script>
+</head>
+<body>
+    <h1>Git Repositories</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Repository</th>
+                <th></th>
+                <th>Branch</th>
+                <th>Tracking</th>
+                <th>State</th>
+                <th>Stash</th>
+                <th>Unsynced</th>
+            </tr>
+        </thead>
+        <tbody id="folder-list"></tbody>
+    </table>
+</body>
+</html>
