@@ -133,7 +133,7 @@ async def list_folders(request):
     """Return a JSON list of folder names in the current directory."""
     current_directory = os.getcwd()
     folders = [name for name in os.listdir(current_directory) 
-              if os.path.isdir(os.path.join(current_directory, name))]
+              if os.path.isdir(os.path.join(current_directory, name)) and name != 'start.app']
     return web.json_response(folders)
 
 async def get_dir_info(request):
@@ -190,7 +190,7 @@ def init_app():
     app.router.add_post('/push/{dirname}', push_repo)
     app.router.add_post('/pull/{dirname}', pull_repo)
     app.router.add_get('/keepalive', keepalive_handler)
-    app.router.add_static('/', path=os.getcwd())
+    app.router.add_static('/', path=os.path.dirname(__file__))
 
     # Add startup signal handler
     async def startup(app):
