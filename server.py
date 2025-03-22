@@ -120,6 +120,7 @@ async def get_git_info(dir_path):
         unsynced_branches = await get_unsynced_branches(dir_path)
 
         return {
+            "name": os.path.basename(os.path.abspath(dir_path)),
             "branch": branch,
             "is_clean": is_clean,
             "commit": commit,
@@ -131,16 +132,68 @@ async def get_git_info(dir_path):
         return None
 
 async def list_folders(request):
-    """Return a JSON list of folder names in the current directory."""
-    current_directory = os.getcwd()
-    folders = [name for name in os.listdir(current_directory) 
-              if os.path.isdir(os.path.join(current_directory, name)) and name != 'start.app']
-    return web.json_response(folders)
+    """Return a JSON list of git repositories in the current directory.
+
+    Will traverse sub-directories recursively if they are no git repositories (without .git folder).
+    """
+    keepalive()
+    ignore = {'start.app'}
+    return web.json_response([r for r in find_git_repositories(os.getcwd()) if r not in ignore])
+
+def find_git_repositories(root):
+    results, _ = find_git_repos(root, root)
+    return results
+
+def find_git_repos(base, root):
+    """
+    Recursively finds directories that are either Git repositories 
+    (i.e. they contain a '.git' subfolder) or, if no descendant in a subtree
+    contains a Git repository, returns the highest-level directory for that branch.
+    
+    Returns a tuple (result, has_repo) where:
+      - result is a list of directory paths (as strings)
+      - has_repo is a boolean indicating whether this tree (or any descendant) contains a Git repo.
+    """
+    # If the current directory is a git repository, return it.
+    if os.path.isdir(os.path.join(root, ".git")):
+        return [_relpath(root, base)], True
+
+    subdirs = sorted([
+        os.path.join(root, entry)
+        for entry in os.listdir(root)
+        if os.path.isdir(os.path.join(root, entry))
+    ])
+
+    # If there are no subdirectories, this is a leaf.
+    if not subdirs:
+        return [_relpath(root, base)], False
+
+    collected = []
+    branch_has_repo = False  # Will become True if any child branch has a Git repo.
+    for subdir in subdirs:
+        result, child_has_repo = find_git_repos(base, subdir)
+        if child_has_repo:
+            branch_has_repo = True
+        collected.extend(result)
+
+    # If none of the child branches contain a Git repo,
+    # then current directory is the highest level non-repo branch.
+    if not branch_has_repo:
+        return [_relpath(root, base)], False
+    else:
+        return collected, True
+
+def _relpath(directory, base):
+    p = os.path.relpath(directory, base).replace('\\', '/')
+    return p if p != '.' else '-'
 
 async def get_dir_info(request):
     """Return JSON with Git information."""
+    keepalive()
     try:
         dirname = unquote(request.match_info['dirname'])
+        if dirname == '-':
+            dirname = '.'
         target_dir = os.path.join(os.getcwd(), dirname)
         
         if not os.path.isdir(target_dir):
@@ -156,6 +209,8 @@ async def sync_repo(request, operation):
     """Helper function to push or pull repository changes."""
     try:
         dirname = unquote(request.match_info['dirname'])
+        if dirname == '-':
+            dirname = '.'
         target_dir = os.path.join(os.getcwd(), dirname)
         result = await run_git_command(target_dir, operation)
         if result is None:
@@ -166,22 +221,28 @@ async def sync_repo(request, operation):
 
 async def push_repo(request):
     """Push changes to the remote repository."""
+    keepalive()
     return await sync_repo(request, 'push')
 
 async def pull_repo(request):
     """Pull changes from the remote repository."""
+    keepalive()
     return await sync_repo(request, 'pull')
 
 async def root_handler(request):
     """Redirect root path to index.html"""
+    keepalive()
     return web.HTTPFound('/index.html')
 
 async def keepalive_handler(request):
     """Handle keepalive requests."""
+    keepalive()
+    return web.Response(text="ok")
+
+def keepalive():
     global last_keepalive
     last_keepalive = time.time()
     print("keepalive received")
-    return web.Response(text="ok")
 
 def init_app():
     app = web.Application()
