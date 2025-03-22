@@ -1,6 +1,8 @@
 # gittool
 
-Show status information of multiple Git repositories in a folder.
+Show status information about multiple Git repositories in a folder.
+
+![Screenshot](screenshot.png)
 
 ## Introduction
 
@@ -18,20 +20,18 @@ information:
 
 It is available for **Windows**, **macOS** and **Linux**.
 
-![Screenshot](screenshot.png)
-
 ## Requirements
 
-You need to have [Git](https://git-scm.com/) and [Python](https://www.python.org/) (>= 3.9)
-installed on your system. Additionally you need to install the Python package `aiohttp`,
+You need to have [Git](https://git-scm.com/) and [Python](https://www.python.org/) (≥ 3.9)
+installed on your system. You also need to install the Python package `aiohttp`,
 typically by running
 
 ```
 pip install aiohttp
 ```
 
-Depending on your system, you might need to install it with `python -m install aiohttp` or
-`python3 -m install aiohttp`. Make sure that running `python -c "import aiohttp"` or
+Depending on your system, you might need to install it with `python -m pip install aiohttp` or
+`python3 -m pip3 install aiohttp`. Make sure that running `python -c "import aiohttp"` or
 `python3 -c "import aiohttp"` results in no error.
 
 ## Installation
@@ -42,7 +42,7 @@ Clone this repository to any desired location on your computer:
 git clone https://github.com/patrsc/gittool.git
 ```
 
-Then follow the operation-system specific steps:
+Then follow the system-specific steps:
 
 ### Windows
 
