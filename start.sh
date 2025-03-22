@@ -14,7 +14,7 @@ gittool_path="."
 PORT=15080
 
 # Start the Python server in the background (hide output)
-nohup "$python_path" "$gittool_path/server.py" >/dev/null 2>&1 &
+nohup "$python_path" "$gittool_path/server.py" $PORT >/dev/null 2>&1 &
 
 # Wait a moment to ensure the server starts
 sleep 0.5  # seconds

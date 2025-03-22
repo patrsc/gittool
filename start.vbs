@@ -10,7 +10,7 @@ gittool_path = "."
 port = "15080"
 
 ' Start the Python server script in a hidden window
-WshShell.Run "cmd /c start /b " & python_path & " """ & gittool_path & "\server.py""", 0, False
+WshShell.Run "cmd /c start /b " & python_path & " """ & gittool_path & "\server.py"" " & port, 0, False
 
 ' Wait for a moment to ensure the server starts
 WScript.Sleep 500 ' milliseconds

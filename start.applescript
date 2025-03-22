@@ -13,7 +13,7 @@ set gittool_path to "."
 set portNumber to "15080"
 
 -- Start the Python server in the background (no terminal window)
-do shell script "cd " & quoted form of scriptDir & ";nohup " & python_path & " '" & gittool_path & "/server.py' >/dev/null 2>&1 & echo $!"
+do shell script "cd " & quoted form of scriptDir & ";nohup " & python_path & " '" & gittool_path & "/server.py' " & portNumber &" >/dev/null 2>&1 & echo $!"
 
 -- Wait a moment to ensure the server starts
 delay 1 -- seconds
