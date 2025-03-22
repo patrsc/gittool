@@ -85,3 +85,13 @@ a trailing slash.
 You might also need to change the `python_path` variable to either `python` or the full path to
 the python executable. You can get it in Terminal by running `which python` or
 `which python3`.
+
+Then copy `start.sh` to any folder where some git repositories are contained (you can copy it to
+multiple folders). Run it by double-clicking. A browser window showing the status of repositiories
+in that folder will open.
+
+> [!NOTE]  
+> If the script doesn't run, but opens a text editor, open any folder in the **Files** application,
+> click on the three bars menu `☰` in the top right corner, select **Preferences** and go to the
+> **Behavior** tab, under **Executable Text Files** select **Run them** and close
+> the Preferences window.
