@@ -18,6 +18,8 @@ information:
 
 It is available for **Windows**, **macOS** and **Linux**.
 
+![Screenshot](screenshot.png)
+
 ## Requirements
 
 You need to have [Git](https://git-scm.com/) and [Python](https://www.python.org/) (>= 3.9)
