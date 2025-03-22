@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Set working directory
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+cd "$SCRIPT_DIR"
+
 # Path to python
 python_path="python3"
 
