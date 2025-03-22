@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Path to python
-python_path="python"
+python_path="python3"
 
 # Path to gittool
 gittool_path="."

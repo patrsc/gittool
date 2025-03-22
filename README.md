@@ -64,7 +64,7 @@ In the file `start.applescript`, edit the `gittool_path` variable to be the full
 the directory where you cloned `gittool` to, e.g. `"/Users/john/Documents/gittool"`, without
 a trailing slash.
 
-You might also need to change the `python_path` variable to either `python3` or the full path to
+You might also need to change the `python_path` variable to either `python` or the full path to
 the python executable. You can get it in Terminal by running `which python` or
 `which python3`.
 
@@ -78,4 +78,10 @@ in that folder will open.
 
 ### Linux
 
-TODO
+In the file `start.sh`, edit the `gittool_path` variable to be the full path to the location of
+the directory where you cloned `gittool` to, e.g. `"/home/john/Documents/gittool"`, without
+a trailing slash.
+
+You might also need to change the `python_path` variable to either `python` or the full path to
+the python executable. You can get it in Terminal by running `which python` or
+`which python3`.
